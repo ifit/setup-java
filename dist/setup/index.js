@@ -103216,7 +103216,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.generate = exports.createAuthenticationSettings = exports.configureAuthentication = exports.SETTINGS_FILE = exports.M2_DIR = void 0;
+exports.generate = exports.createAuthenticationSettings = exports.configureAuthentication = void 0;
 const path = __importStar(__nccwpck_require__(1017));
 const core = __importStar(__nccwpck_require__(2186));
 const io = __importStar(__nccwpck_require__(7436));
@@ -103226,14 +103226,12 @@ const xmlbuilder2_1 = __nccwpck_require__(151);
 const constants = __importStar(__nccwpck_require__(9042));
 const gpg = __importStar(__nccwpck_require__(3759));
 const util_1 = __nccwpck_require__(2629);
-exports.M2_DIR = '.m2';
-exports.SETTINGS_FILE = 'settings.xml';
 function configureAuthentication() {
     return __awaiter(this, void 0, void 0, function* () {
         const id = core.getInput(constants.INPUT_SERVER_ID);
         const username = core.getInput(constants.INPUT_SERVER_USERNAME);
         const password = core.getInput(constants.INPUT_SERVER_PASSWORD);
-        const settingsDirectory = core.getInput(constants.INPUT_SETTINGS_PATH) || path.join(os.homedir(), exports.M2_DIR);
+        const settingsDirectory = core.getInput(constants.INPUT_SETTINGS_PATH) || path.join(os.homedir(), constants.M2_DIR);
         const overwriteSettings = util_1.getBooleanInput(constants.INPUT_OVERWRITE_SETTINGS, true);
         const gpgPrivateKey = core.getInput(constants.INPUT_GPG_PRIVATE_KEY) || constants.INPUT_DEFAULT_GPG_PRIVATE_KEY;
         const gpgPassphrase = core.getInput(constants.INPUT_GPG_PASSPHRASE) ||
@@ -103252,7 +103250,7 @@ function configureAuthentication() {
 exports.configureAuthentication = configureAuthentication;
 function createAuthenticationSettings(id, username, password, settingsDirectory, overwriteSettings, gpgPassphrase = undefined) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.info(`Creating ${exports.SETTINGS_FILE} with server-id: ${id}`);
+        core.info(`Creating ${constants.MVN_SETTINGS_FILE} with server-id: ${id}`);
         // when an alternate m2 location is specified use only that location (no .m2 directory)
         // otherwise use the home/.m2/ path
         yield io.mkdirP(settingsDirectory);
@@ -103294,7 +103292,7 @@ function generate(id, username, password, gpgPassphrase) {
 exports.generate = generate;
 function write(directory, settings, overwriteSettings) {
     return __awaiter(this, void 0, void 0, function* () {
-        const location = path.join(directory, exports.SETTINGS_FILE);
+        const location = path.join(directory, constants.MVN_SETTINGS_FILE);
         const settingsExists = fs.existsSync(location);
         if (settingsExists && overwriteSettings) {
             core.info(`Overwriting existing file ${location}`);
@@ -103510,7 +103508,7 @@ function isProbablyGradleDaemonProblem(packageManager, error) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.STATE_GPG_PRIVATE_KEY_FINGERPRINT = exports.INPUT_JOB_STATUS = exports.INPUT_CACHE = exports.INPUT_DEFAULT_GPG_PASSPHRASE = exports.INPUT_DEFAULT_GPG_PRIVATE_KEY = exports.INPUT_GPG_PASSPHRASE = exports.INPUT_GPG_PRIVATE_KEY = exports.INPUT_OVERWRITE_SETTINGS = exports.INPUT_SETTINGS_PATH = exports.INPUT_SERVER_PASSWORD = exports.INPUT_SERVER_USERNAME = exports.INPUT_SERVER_ID = exports.INPUT_CHECK_LATEST = exports.INPUT_JDK_FILE = exports.INPUT_DISTRIBUTION = exports.INPUT_JAVA_PACKAGE = exports.INPUT_ARCHITECTURE = exports.INPUT_JAVA_VERSION = exports.MACOS_JAVA_CONTENT_POSTFIX = void 0;
+exports.INPUT_MVN_TOOLCHAIN_VENDOR = exports.INPUT_MVN_TOOLCHAIN_ID = exports.MVN_TOOLCHAINS_FILE = exports.MVN_SETTINGS_FILE = exports.M2_DIR = exports.STATE_GPG_PRIVATE_KEY_FINGERPRINT = exports.INPUT_JOB_STATUS = exports.INPUT_CACHE = exports.INPUT_DEFAULT_GPG_PASSPHRASE = exports.INPUT_DEFAULT_GPG_PRIVATE_KEY = exports.INPUT_GPG_PASSPHRASE = exports.INPUT_GPG_PRIVATE_KEY = exports.INPUT_OVERWRITE_SETTINGS = exports.INPUT_SETTINGS_PATH = exports.INPUT_SERVER_PASSWORD = exports.INPUT_SERVER_USERNAME = exports.INPUT_SERVER_ID = exports.INPUT_CHECK_LATEST = exports.INPUT_JDK_FILE = exports.INPUT_DISTRIBUTION = exports.INPUT_JAVA_PACKAGE = exports.INPUT_ARCHITECTURE = exports.INPUT_JAVA_VERSION = exports.MACOS_JAVA_CONTENT_POSTFIX = void 0;
 exports.MACOS_JAVA_CONTENT_POSTFIX = 'Contents/Home';
 exports.INPUT_JAVA_VERSION = 'java-version';
 exports.INPUT_ARCHITECTURE = 'architecture';
@@ -103530,6 +103528,11 @@ exports.INPUT_DEFAULT_GPG_PASSPHRASE = 'GPG_PASSPHRASE';
 exports.INPUT_CACHE = 'cache';
 exports.INPUT_JOB_STATUS = 'job-status';
 exports.STATE_GPG_PRIVATE_KEY_FINGERPRINT = 'gpg-private-key-fingerprint';
+exports.M2_DIR = '.m2';
+exports.MVN_SETTINGS_FILE = 'settings.xml';
+exports.MVN_TOOLCHAINS_FILE = 'toolchains.xml';
+exports.INPUT_MVN_TOOLCHAIN_ID = 'mvn-toolchain-id';
+exports.INPUT_MVN_TOOLCHAIN_VENDOR = 'mvn-toolchain-vendor';
 
 
 /***/ }),
@@ -104952,6 +104955,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const auth = __importStar(__nccwpck_require__(3497));
 const util_1 = __nccwpck_require__(2629);
+const toolchains = __importStar(__nccwpck_require__(9322));
 const constants = __importStar(__nccwpck_require__(9042));
 const cache_1 = __nccwpck_require__(4810);
 const path = __importStar(__nccwpck_require__(1017));
@@ -104966,8 +104970,12 @@ function run() {
             const jdkFile = core.getInput(constants.INPUT_JDK_FILE);
             const cache = core.getInput(constants.INPUT_CACHE);
             const checkLatest = util_1.getBooleanInput(constants.INPUT_CHECK_LATEST, false);
+            let toolchainIds = core.getMultilineInput(constants.INPUT_MVN_TOOLCHAIN_ID);
+            if (versions.length !== toolchainIds.length) {
+                toolchainIds = [];
+            }
             core.startGroup('Installed distributions');
-            for (const version of versions) {
+            for (const [index, version] of versions.entries()) {
                 const installerOptions = {
                     architecture,
                     packageType,
@@ -104979,6 +104987,7 @@ function run() {
                     throw new Error(`No supported distribution was found for input ${distributionName}`);
                 }
                 const result = yield distribution.setupJava();
+                yield toolchains.configureToolchains(version, distributionName, result.path, toolchainIds[index]);
                 core.info('');
                 core.info('Java configuration:');
                 core.info(`  Distribution: ${distributionName}`);
@@ -105000,6 +105009,166 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 9322:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.generateToolchainDefinition = exports.createToolchainsSettings = exports.configureToolchains = void 0;
+const fs = __importStar(__nccwpck_require__(7147));
+const os = __importStar(__nccwpck_require__(2037));
+const path = __importStar(__nccwpck_require__(1017));
+const core = __importStar(__nccwpck_require__(2186));
+const io = __importStar(__nccwpck_require__(7436));
+const constants = __importStar(__nccwpck_require__(9042));
+const util_1 = __nccwpck_require__(2629);
+const xmlbuilder2_1 = __nccwpck_require__(151);
+function configureToolchains(version, distributionName, jdkHome, toolchainId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const vendor = core.getInput(constants.INPUT_MVN_TOOLCHAIN_VENDOR) || distributionName;
+        const id = toolchainId || `${vendor}_${version}`;
+        const settingsDirectory = core.getInput(constants.INPUT_SETTINGS_PATH) || path.join(os.homedir(), constants.M2_DIR);
+        const overwriteSettings = util_1.getBooleanInput(constants.INPUT_OVERWRITE_SETTINGS, true);
+        yield createToolchainsSettings({
+            jdkInfo: {
+                version,
+                vendor,
+                id,
+                jdkHome
+            },
+            settingsDirectory,
+            overwriteSettings
+        });
+    });
+}
+exports.configureToolchains = configureToolchains;
+function createToolchainsSettings({ jdkInfo, settingsDirectory, overwriteSettings }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.info(`Creating ${constants.MVN_TOOLCHAINS_FILE} for JDK version ${jdkInfo.version} from ${jdkInfo.vendor}`);
+        // when an alternate m2 location is specified use only that location (no .m2 directory)
+        // otherwise use the home/.m2/ path
+        yield io.mkdirP(settingsDirectory);
+        const originalToolchains = yield readExistingToolchainsFile(settingsDirectory);
+        const updatedToolchains = generateToolchainDefinition(originalToolchains, jdkInfo.version, jdkInfo.vendor, jdkInfo.id, jdkInfo.jdkHome);
+        yield writeToolchainsFileToDisk(settingsDirectory, updatedToolchains, overwriteSettings);
+    });
+}
+exports.createToolchainsSettings = createToolchainsSettings;
+// only exported for testing purposes
+function generateToolchainDefinition(original, version, vendor, id, jdkHome) {
+    let xmlObj;
+    if (original === null || original === void 0 ? void 0 : original.length) {
+        xmlObj = xmlbuilder2_1.create(original)
+            .root()
+            .ele({
+            toolchain: {
+                type: 'jdk',
+                provides: {
+                    version: `${version}`,
+                    vendor: `${vendor}`,
+                    id: `${id}`
+                },
+                configuration: {
+                    jdkHome: `${jdkHome}`
+                }
+            }
+        });
+    }
+    else
+        xmlObj = xmlbuilder2_1.create({
+            toolchains: {
+                '@xmlns': 'https://maven.apache.org/TOOLCHAINS/1.1.0',
+                '@xmlns:xsi': 'https://www.w3.org/2001/XMLSchema-instance',
+                '@xsi:schemaLocation': 'https://maven.apache.org/TOOLCHAINS/1.1.0 https://maven.apache.org/xsd/toolchains-1.1.0.xsd',
+                toolchain: [
+                    {
+                        type: 'jdk',
+                        provides: {
+                            version: `${version}`,
+                            vendor: `${vendor}`,
+                            id: `${id}`
+                        },
+                        configuration: {
+                            jdkHome: `${jdkHome}`
+                        }
+                    }
+                ]
+            }
+        });
+    return xmlObj.end({
+        format: 'xml',
+        wellFormed: false,
+        headless: false,
+        prettyPrint: true,
+        width: 80
+    });
+}
+exports.generateToolchainDefinition = generateToolchainDefinition;
+function readExistingToolchainsFile(directory) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const location = path.join(directory, constants.MVN_TOOLCHAINS_FILE);
+        if (fs.existsSync(location)) {
+            return fs.readFileSync(location, {
+                encoding: 'utf-8',
+                flag: 'r'
+            });
+        }
+        return '';
+    });
+}
+function writeToolchainsFileToDisk(directory, settings, overwriteSettings) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const location = path.join(directory, constants.MVN_TOOLCHAINS_FILE);
+        const settingsExists = fs.existsSync(location);
+        if (settingsExists && overwriteSettings) {
+            core.info(`Overwriting existing file ${location}`);
+        }
+        else if (!settingsExists) {
+            core.info(`Writing to ${location}`);
+        }
+        else {
+            core.info(`Skipping generation of ${location} because file already exists and overwriting is not enabled`);
+            return;
+        }
+        return fs.writeFileSync(location, settings, {
+            encoding: 'utf-8',
+            flag: 'w'
+        });
+    });
+}
 
 
 /***/ }),
