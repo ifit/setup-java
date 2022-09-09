@@ -103458,7 +103458,7 @@ function save(id) {
     return __awaiter(this, void 0, void 0, function* () {
         const packageManager = findPackageManager(id);
         const matchedKey = core.getState(CACHE_MATCHED_KEY);
-        // Inputs are re-evaluted before the post action, so we want the original key used for restore
+        // Inputs are re-evaluated before the post action, so we want the original key used for restore
         const primaryKey = core.getState(STATE_CACHE_PRIMARY_KEY);
         if (!primaryKey) {
             core.warning('Error retrieving key from state.');
@@ -103865,13 +103865,13 @@ class JavaBase {
         };
     }
     setJavaDefault(version, toolPath) {
-        const majorVerssion = version.split('.')[0];
+        const majorVersion = version.split('.')[0];
         core.exportVariable('JAVA_HOME', toolPath);
         core.addPath(path_1.default.join(toolPath, 'bin'));
         core.setOutput('distribution', this.distribution);
         core.setOutput('path', toolPath);
         core.setOutput('version', version);
-        core.exportVariable(`JAVA_HOME_${majorVerssion}_${this.architecture.toUpperCase()}`, toolPath);
+        core.exportVariable(`JAVA_HOME_${majorVersion}_${this.architecture.toUpperCase()}`, toolPath);
     }
 }
 exports.JavaBase = JavaBase;
@@ -103975,7 +103975,7 @@ class CorrettoDistribution extends base_installer_1.JavaBase {
             const arch = this.architecture;
             const imageType = this.packageType;
             if (core.isDebug()) {
-                console.time('coretto-retrieve-available-versions');
+                console.time('corretto-retrieve-available-versions');
             }
             const availableVersionsUrl = 'https://corretto.github.io/corretto-downloads/latest_links/indexmap_with_checksum.json';
             const fetchCurrentVersions = yield this.http.getJson(availableVersionsUrl);
@@ -103983,25 +103983,25 @@ class CorrettoDistribution extends base_installer_1.JavaBase {
             if (!fetchedCurrentVersions) {
                 throw Error(`Could not fetch latest corretto versions from ${availableVersionsUrl}`);
             }
-            const eligbleVersions = (_b = (_a = fetchedCurrentVersions === null || fetchedCurrentVersions === void 0 ? void 0 : fetchedCurrentVersions[platform]) === null || _a === void 0 ? void 0 : _a[arch]) === null || _b === void 0 ? void 0 : _b[imageType];
-            const availableVersions = this.getAvailableVersionsForPlatform(eligbleVersions);
+            const eligibleVersions = (_b = (_a = fetchedCurrentVersions === null || fetchedCurrentVersions === void 0 ? void 0 : fetchedCurrentVersions[platform]) === null || _a === void 0 ? void 0 : _a[arch]) === null || _b === void 0 ? void 0 : _b[imageType];
+            const availableVersions = this.getAvailableVersionsForPlatform(eligibleVersions);
             if (core.isDebug()) {
                 this.printAvailableVersions(availableVersions);
             }
             return availableVersions;
         });
     }
-    getAvailableVersionsForPlatform(eligbleVersions) {
+    getAvailableVersionsForPlatform(eligibleVersions) {
         const availableVersions = [];
-        for (const version in eligbleVersions) {
-            const availableVersion = eligbleVersions[version];
+        for (const version in eligibleVersions) {
+            const availableVersion = eligibleVersions[version];
             for (const fileType in availableVersion) {
                 const skipNonExtractableBinaries = fileType != util_1.getDownloadArchiveExtension();
                 if (skipNonExtractableBinaries) {
                     continue;
                 }
                 const availableVersionDetails = availableVersion[fileType];
-                const correttoVersion = this.getCorettoVersion(availableVersionDetails.resource);
+                const correttoVersion = this.getCorrettoVersion(availableVersionDetails.resource);
                 availableVersions.push({
                     checksum: availableVersionDetails.checksum,
                     checksum_sha256: availableVersionDetails.checksum_sha256,
@@ -104017,13 +104017,13 @@ class CorrettoDistribution extends base_installer_1.JavaBase {
     }
     printAvailableVersions(availableVersions) {
         core.startGroup('Print information about available versions');
-        console.timeEnd('coretto-retrieve-available-versions');
+        console.timeEnd('corretto-retrieve-available-versions');
         console.log(`Available versions: [${availableVersions.length}]`);
         console.log(availableVersions.map(item => `${item.version}: ${item.correttoVersion}`).join(', '));
         core.endGroup();
     }
     getPlatformOption() {
-        // Coretto has its own platform names so we need to map them
+        // Corretto has its own platform names so we need to map them
         switch (process.platform) {
             case 'darwin':
                 return 'macos';
@@ -104033,7 +104033,7 @@ class CorrettoDistribution extends base_installer_1.JavaBase {
                 return process.platform;
         }
     }
-    getCorettoVersion(resource) {
+    getCorrettoVersion(resource) {
         const regex = /(\d+.+)\//;
         const match = regex.exec(resource);
         if (match === null) {
