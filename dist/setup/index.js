@@ -104405,7 +104405,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MicrosoftDistributions = void 0;
 const base_installer_1 = __nccwpck_require__(9741);
-const semver_1 = __importDefault(__nccwpck_require__(1383));
 const util_1 = __nccwpck_require__(2629);
 const core = __importStar(__nccwpck_require__(2186));
 const tc = __importStar(__nccwpck_require__(7784));
@@ -104439,69 +104438,50 @@ class MicrosoftDistributions extends base_installer_1.JavaBase {
             if (this.packageType !== 'jdk') {
                 throw new Error('Microsoft Build of OpenJDK provides only the `jdk` package type');
             }
-            const availableVersionsRaw = yield this.getAvailableVersions();
-            const opts = this.getPlatformOption();
-            const availableVersions = availableVersionsRaw.map(item => ({
-                url: `https://aka.ms/download-jdk/microsoft-jdk-${item.version.join('.')}-${opts.os}-${this.architecture}.${opts.archive}`,
-                version: this.convertVersionToSemver(item)
-            }));
-            const satisfiedVersion = availableVersions
-                .filter(item => util_1.isVersionSatisfies(range, item.version))
-                .sort((a, b) => -semver_1.default.compareBuild(a.version, b.version))[0];
-            if (!satisfiedVersion) {
-                const availableOptions = availableVersions.map(item => item.version).join(', ');
-                const availableOptionsMessage = availableOptions
-                    ? `\nAvailable versions: ${availableOptions}`
-                    : '';
-                throw new Error(`Could not find satisfied version for SemVer ${range}. ${availableOptionsMessage}`);
+            const manifest = yield this.getAvailableVersions();
+            if (!manifest) {
+                throw new Error('Could not load manifest for Microsoft Build of OpenJDK');
             }
-            return satisfiedVersion;
+            const foundRelease = yield tc.findFromManifest(range, true, manifest, this.architecture);
+            if (!foundRelease) {
+                throw new Error(`Could not find satisfied version for SemVer ${range}. ${manifest
+                    .map(item => item.version)
+                    .join(', ')}`);
+            }
+            return { url: foundRelease.files[0].download_url, version: foundRelease.version };
         });
     }
     getAvailableVersions() {
         return __awaiter(this, void 0, void 0, function* () {
             // TODO get these dynamically!
             // We will need Microsoft to add an endpoint where we can query for versions.
-            const jdkVersions = [
-                {
-                    version: [17, 0, 3]
-                },
-                {
-                    version: [17, 0, 1, 12, 1]
-                },
-                {
-                    version: [16, 0, 2, 7, 1]
-                },
-                {
-                    version: [11, 0, 15]
+            const token = core.getInput('token');
+            const owner = 'actions';
+            const repository = 'setup-java';
+            const branch = 'main';
+            const filePath = 'src/distributions/microsoft/microsoft-openjdk-versions.json';
+            let releases = null;
+            const fileUrl = `https://api.github.com/repos/${owner}/${repository}/contents/${filePath}?ref=${branch}`;
+            const headers = {
+                authorization: token,
+                accept: 'application/vnd.github.VERSION.raw'
+            };
+            let response = null;
+            try {
+                response = yield this.http.getJson(fileUrl, headers);
+                if (!response.result) {
+                    return null;
                 }
-            ];
-            // M1 is only supported for Java 16 & 17
-            if (process.platform !== 'darwin' || this.architecture !== 'aarch64') {
-                jdkVersions.push({
-                    version: [11, 0, 13, 8, 1]
-                });
             }
-            return jdkVersions;
+            catch (err) {
+                core.debug(`Http request for microsoft-openjdk-versions.json failed with status code: ${response === null || response === void 0 ? void 0 : response.statusCode}`);
+                return null;
+            }
+            if (response.result) {
+                releases = response.result;
+            }
+            return releases;
         });
-    }
-    getPlatformOption(platform = process.platform /* for testing */) {
-        switch (platform) {
-            case 'darwin':
-                return { archive: 'tar.gz', os: 'macos' };
-            case 'win32':
-                return { archive: 'zip', os: 'windows' };
-            case 'linux':
-                return { archive: 'tar.gz', os: 'linux' };
-            default:
-                throw new Error(`Platform '${platform}' is not supported. Supported platforms: 'darwin', 'linux', 'win32'`);
-        }
-    }
-    convertVersionToSemver(version) {
-        const major = version.version[0];
-        const minor = version.version[1];
-        const patch = version.version[2];
-        return `${major}.${minor}.${patch}`;
     }
 }
 exports.MicrosoftDistributions = MicrosoftDistributions;
