@@ -104539,6 +104539,7 @@ class MicrosoftDistributions extends base_installer_1.JavaBase {
             // TODO get these dynamically!
             // We will need Microsoft to add an endpoint where we can query for versions.
             const token = core.getInput('token');
+            const auth = !token ? undefined : `token ${token}`;
             const owner = 'actions';
             const repository = 'setup-java';
             const branch = 'main';
@@ -104546,7 +104547,7 @@ class MicrosoftDistributions extends base_installer_1.JavaBase {
             let releases = null;
             const fileUrl = `https://api.github.com/repos/${owner}/${repository}/contents/${filePath}?ref=${branch}`;
             const headers = {
-                authorization: token,
+                authorization: auth,
                 accept: 'application/vnd.github.VERSION.raw'
             };
             let response = null;
