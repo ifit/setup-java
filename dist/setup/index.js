@@ -103582,9 +103582,10 @@ function isProbablyGradleDaemonProblem(packageManager, error) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.INPUT_MVN_TOOLCHAIN_VENDOR = exports.INPUT_MVN_TOOLCHAIN_ID = exports.MVN_TOOLCHAINS_FILE = exports.MVN_SETTINGS_FILE = exports.M2_DIR = exports.STATE_GPG_PRIVATE_KEY_FINGERPRINT = exports.INPUT_JOB_STATUS = exports.INPUT_CACHE = exports.INPUT_DEFAULT_GPG_PASSPHRASE = exports.INPUT_DEFAULT_GPG_PRIVATE_KEY = exports.INPUT_GPG_PASSPHRASE = exports.INPUT_GPG_PRIVATE_KEY = exports.INPUT_OVERWRITE_SETTINGS = exports.INPUT_SETTINGS_PATH = exports.INPUT_SERVER_PASSWORD = exports.INPUT_SERVER_USERNAME = exports.INPUT_SERVER_ID = exports.INPUT_CHECK_LATEST = exports.INPUT_JDK_FILE = exports.INPUT_DISTRIBUTION = exports.INPUT_JAVA_PACKAGE = exports.INPUT_ARCHITECTURE = exports.INPUT_JAVA_VERSION = exports.MACOS_JAVA_CONTENT_POSTFIX = void 0;
+exports.DISTRIBUTIONS_ONLY_MAJOR_VERSION = exports.INPUT_MVN_TOOLCHAIN_VENDOR = exports.INPUT_MVN_TOOLCHAIN_ID = exports.MVN_TOOLCHAINS_FILE = exports.MVN_SETTINGS_FILE = exports.M2_DIR = exports.STATE_GPG_PRIVATE_KEY_FINGERPRINT = exports.INPUT_JOB_STATUS = exports.INPUT_CACHE = exports.INPUT_DEFAULT_GPG_PASSPHRASE = exports.INPUT_DEFAULT_GPG_PRIVATE_KEY = exports.INPUT_GPG_PASSPHRASE = exports.INPUT_GPG_PRIVATE_KEY = exports.INPUT_OVERWRITE_SETTINGS = exports.INPUT_SETTINGS_PATH = exports.INPUT_SERVER_PASSWORD = exports.INPUT_SERVER_USERNAME = exports.INPUT_SERVER_ID = exports.INPUT_CHECK_LATEST = exports.INPUT_JDK_FILE = exports.INPUT_DISTRIBUTION = exports.INPUT_JAVA_PACKAGE = exports.INPUT_ARCHITECTURE = exports.INPUT_JAVA_VERSION_FILE = exports.INPUT_JAVA_VERSION = exports.MACOS_JAVA_CONTENT_POSTFIX = void 0;
 exports.MACOS_JAVA_CONTENT_POSTFIX = 'Contents/Home';
 exports.INPUT_JAVA_VERSION = 'java-version';
+exports.INPUT_JAVA_VERSION_FILE = 'java-version-file';
 exports.INPUT_ARCHITECTURE = 'architecture';
 exports.INPUT_JAVA_PACKAGE = 'java-package';
 exports.INPUT_DISTRIBUTION = 'distribution';
@@ -103607,6 +103608,7 @@ exports.MVN_SETTINGS_FILE = 'settings.xml';
 exports.MVN_TOOLCHAINS_FILE = 'toolchains.xml';
 exports.INPUT_MVN_TOOLCHAIN_ID = 'mvn-toolchain-id';
 exports.INPUT_MVN_TOOLCHAIN_VENDOR = 'mvn-toolchain-vendor';
+exports.DISTRIBUTIONS_ONLY_MAJOR_VERSION = ['corretto'];
 
 
 /***/ }),
@@ -104551,7 +104553,7 @@ class MicrosoftDistributions extends base_installer_1.JavaBase {
             }
             const foundRelease = yield tc.findFromManifest(range, true, manifest, arch);
             if (!foundRelease) {
-                throw new Error(`Could not find satisfied version for SemVer ${range}. ${manifest
+                throw new Error(`Could not find satisfied version for SemVer ${range}.\nAvailable versions: ${manifest
                     .map(item => item.version)
                     .join(', ')}`);
             }
@@ -105056,7 +105058,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+const fs_1 = __importDefault(__nccwpck_require__(7147));
 const core = __importStar(__nccwpck_require__(2186));
 const auth = __importStar(__nccwpck_require__(3497));
 const util_1 = __nccwpck_require__(2629);
@@ -105068,37 +105074,45 @@ const distribution_factory_1 = __nccwpck_require__(924);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const versions = core.getMultilineInput(constants.INPUT_JAVA_VERSION, { required: true });
+            const versions = core.getMultilineInput(constants.INPUT_JAVA_VERSION);
             const distributionName = core.getInput(constants.INPUT_DISTRIBUTION, { required: true });
+            const versionFile = core.getInput(constants.INPUT_JAVA_VERSION_FILE);
             const architecture = core.getInput(constants.INPUT_ARCHITECTURE);
             const packageType = core.getInput(constants.INPUT_JAVA_PACKAGE);
             const jdkFile = core.getInput(constants.INPUT_JDK_FILE);
             const cache = core.getInput(constants.INPUT_CACHE);
             const checkLatest = util_1.getBooleanInput(constants.INPUT_CHECK_LATEST, false);
             let toolchainIds = core.getMultilineInput(constants.INPUT_MVN_TOOLCHAIN_ID);
+            core.startGroup('Installed distributions');
             if (versions.length !== toolchainIds.length) {
                 toolchainIds = [];
             }
-            core.startGroup('Installed distributions');
-            for (const [index, version] of versions.entries()) {
-                const installerOptions = {
-                    architecture,
-                    packageType,
-                    version,
-                    checkLatest
-                };
-                const distribution = distribution_factory_1.getJavaDistribution(distributionName, installerOptions, jdkFile);
-                if (!distribution) {
-                    throw new Error(`No supported distribution was found for input ${distributionName}`);
+            if (!versions.length && !versionFile) {
+                throw new Error('java-version or java-version-file input expected');
+            }
+            const installerInputsOptions = {
+                architecture,
+                packageType,
+                checkLatest,
+                distributionName,
+                jdkFile,
+                toolchainIds
+            };
+            if (!versions.length) {
+                core.debug('java-version input is empty, looking for java-version-file input');
+                const content = fs_1.default
+                    .readFileSync(versionFile)
+                    .toString()
+                    .trim();
+                const version = util_1.getVersionFromFileContent(content, distributionName);
+                core.debug(`Parsed version from file '${version}'`);
+                if (!version) {
+                    throw new Error(`No supported version was found in file ${versionFile}`);
                 }
-                const result = yield distribution.setupJava();
-                yield toolchains.configureToolchains(version, distributionName, result.path, toolchainIds[index]);
-                core.info('');
-                core.info('Java configuration:');
-                core.info(`  Distribution: ${distributionName}`);
-                core.info(`  Version: ${result.version}`);
-                core.info(`  Path: ${result.path}`);
-                core.info('');
+                yield installVersion(version, installerInputsOptions);
+            }
+            for (const [index, version] of versions.entries()) {
+                yield installVersion(version, installerInputsOptions, index);
             }
             core.endGroup();
             const matchersPath = path.join(__dirname, '..', '..', '.github');
@@ -105114,6 +105128,29 @@ function run() {
     });
 }
 run();
+function installVersion(version, options, toolchainId = 0) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const { distributionName, jdkFile, architecture, packageType, checkLatest, toolchainIds } = options;
+        const installerOptions = {
+            architecture,
+            packageType,
+            checkLatest,
+            version
+        };
+        const distribution = distribution_factory_1.getJavaDistribution(distributionName, installerOptions, jdkFile);
+        if (!distribution) {
+            throw new Error(`No supported distribution was found for input ${distributionName}`);
+        }
+        const result = yield distribution.setupJava();
+        yield toolchains.configureToolchains(version, distributionName, result.path, toolchainIds[toolchainId]);
+        core.info('');
+        core.info('Java configuration:');
+        core.info(`  Distribution: ${distributionName}`);
+        core.info(`  Version: ${result.version}`);
+        core.info(`  Path: ${result.path}`);
+        core.info('');
+    });
+}
 
 
 /***/ }),
@@ -105315,7 +105352,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isCacheFeatureAvailable = exports.isGhes = exports.isJobStatusSuccess = exports.getToolcachePath = exports.isVersionSatisfies = exports.getDownloadArchiveExtension = exports.extractJdkFile = exports.getVersionFromToolcachePath = exports.getBooleanInput = exports.getTempDir = void 0;
+exports.getVersionFromFileContent = exports.isCacheFeatureAvailable = exports.isGhes = exports.isJobStatusSuccess = exports.getToolcachePath = exports.isVersionSatisfies = exports.getDownloadArchiveExtension = exports.extractJdkFile = exports.getVersionFromToolcachePath = exports.getBooleanInput = exports.getTempDir = void 0;
 const os_1 = __importDefault(__nccwpck_require__(2037));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const fs = __importStar(__nccwpck_require__(7147));
@@ -105411,6 +105448,34 @@ function isCacheFeatureAvailable() {
     return true;
 }
 exports.isCacheFeatureAvailable = isCacheFeatureAvailable;
+function getVersionFromFileContent(content, distributionName) {
+    var _a, _b, _c, _d, _e;
+    const javaVersionRegExp = /(?<version>(?<=(^|\s|\-))(\d+\S*))(\s|$)/;
+    const fileContent = ((_b = (_a = content.match(javaVersionRegExp)) === null || _a === void 0 ? void 0 : _a.groups) === null || _b === void 0 ? void 0 : _b.version)
+        ? (_d = (_c = content.match(javaVersionRegExp)) === null || _c === void 0 ? void 0 : _c.groups) === null || _d === void 0 ? void 0 : _d.version
+        : '';
+    if (!fileContent) {
+        return null;
+    }
+    core.debug(`Version from file '${fileContent}'`);
+    const tentativeVersion = avoidOldNotation(fileContent);
+    const rawVersion = tentativeVersion.split('-')[0];
+    let version = semver.validRange(rawVersion) ? tentativeVersion : semver.coerce(tentativeVersion);
+    core.debug(`Range version from file is '${version}'`);
+    if (!version) {
+        return null;
+    }
+    if (constants_1.DISTRIBUTIONS_ONLY_MAJOR_VERSION.includes(distributionName)) {
+        const coerceVersion = (_e = semver.coerce(version)) !== null && _e !== void 0 ? _e : version;
+        version = semver.major(coerceVersion).toString();
+    }
+    return version.toString();
+}
+exports.getVersionFromFileContent = getVersionFromFileContent;
+// By convention, action expects version 8 in the format `8.*` instead of `1.8`
+function avoidOldNotation(content) {
+    return content.startsWith('1.') ? content.substring(2) : content;
+}
 
 
 /***/ }),
