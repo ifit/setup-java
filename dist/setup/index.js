@@ -104608,16 +104608,16 @@ class LocalDistribution extends base_installer_1.JavaBase {
                 const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
                 const archivePath = path_1.default.join(extractedJavaPath, archiveName);
                 const javaVersion = this.version;
-                let javaPath = yield tc.cacheDir(archivePath, this.toolcacheFolderName, this.getToolcacheVersionName(javaVersion), this.architecture);
-                // for different Java distributions, postfix can exist or not so need to check both cases
-                if (process.platform === 'darwin' &&
-                    fs_1.default.existsSync(path_1.default.join(javaPath, constants_1.MACOS_JAVA_CONTENT_POSTFIX))) {
-                    javaPath = path_1.default.join(javaPath, constants_1.MACOS_JAVA_CONTENT_POSTFIX);
-                }
+                const javaPath = yield tc.cacheDir(archivePath, this.toolcacheFolderName, this.getToolcacheVersionName(javaVersion), this.architecture);
                 foundJava = {
                     version: javaVersion,
                     path: javaPath
                 };
+            }
+            // JDK folder may contain postfix "Contents/Home" on macOS
+            const macOSPostfixPath = path_1.default.join(foundJava.path, constants_1.MACOS_JAVA_CONTENT_POSTFIX);
+            if (process.platform === 'darwin' && fs_1.default.existsSync(macOSPostfixPath)) {
+                foundJava.path = macOSPostfixPath;
             }
             core.info(`Setting Java ${foundJava.version} as default`);
             this.setJavaDefault(foundJava.version, foundJava.path);
