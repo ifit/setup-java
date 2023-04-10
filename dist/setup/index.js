@@ -104209,7 +104209,7 @@ class CorrettoDistribution extends base_installer_1.JavaBase {
                 .filter(item => item.version == version)
                 .map(item => {
                 return {
-                    version: item.correttoVersion,
+                    version: util_1.convertVersionToSemver(item.correttoVersion),
                     url: item.downloadLink
                 };
             });
@@ -105310,9 +105310,9 @@ class ZuluDistribution extends base_installer_1.JavaBase {
             const availableVersionsRaw = yield this.getAvailableVersions();
             const availableVersions = availableVersionsRaw.map(item => {
                 return {
-                    version: this.convertVersionToSemver(item.jdk_version),
+                    version: util_1.convertVersionToSemver(item.jdk_version),
                     url: item.url,
-                    zuluVersion: this.convertVersionToSemver(item.zulu_version)
+                    zuluVersion: util_1.convertVersionToSemver(item.zulu_version)
                 };
             });
             const satisfiedVersions = availableVersions
@@ -105418,15 +105418,6 @@ class ZuluDistribution extends base_installer_1.JavaBase {
             default:
                 return process.platform;
         }
-    }
-    // Azul API returns jdk_version as array of digits like [11, 0, 2, 1]
-    convertVersionToSemver(version_array) {
-        const mainVersion = version_array.slice(0, 3).join('.');
-        if (version_array.length > 3) {
-            // intentionally ignore more than 4 numbers because it is invalid semver
-            return `${mainVersion}+${version_array[3]}`;
-        }
-        return mainVersion;
     }
 }
 exports.ZuluDistribution = ZuluDistribution;
@@ -105843,7 +105834,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getVersionFromFileContent = exports.isCacheFeatureAvailable = exports.isGhes = exports.isJobStatusSuccess = exports.getToolcachePath = exports.isVersionSatisfies = exports.getDownloadArchiveExtension = exports.extractJdkFile = exports.getVersionFromToolcachePath = exports.getBooleanInput = exports.getTempDir = void 0;
+exports.convertVersionToSemver = exports.getVersionFromFileContent = exports.isCacheFeatureAvailable = exports.isGhes = exports.isJobStatusSuccess = exports.getToolcachePath = exports.isVersionSatisfies = exports.getDownloadArchiveExtension = exports.extractJdkFile = exports.getVersionFromToolcachePath = exports.getBooleanInput = exports.getTempDir = void 0;
 const os_1 = __importDefault(__nccwpck_require__(2037));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const fs = __importStar(__nccwpck_require__(7147));
@@ -105970,6 +105961,16 @@ exports.getVersionFromFileContent = getVersionFromFileContent;
 function avoidOldNotation(content) {
     return content.startsWith('1.') ? content.substring(2) : content;
 }
+function convertVersionToSemver(version) {
+    // Some distributions may use semver-like notation (12.10.2.1, 12.10.2.1.1)
+    const versionArray = Array.isArray(version) ? version : version.split('.');
+    const mainVersion = versionArray.slice(0, 3).join('.');
+    if (versionArray.length > 3) {
+        return `${mainVersion}+${versionArray.slice(3).join('.')}`;
+    }
+    return mainVersion;
+}
+exports.convertVersionToSemver = convertVersionToSemver;
 
 
 /***/ }),
