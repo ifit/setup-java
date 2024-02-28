@@ -123685,9 +123685,15 @@ class LibericaDistributions extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32' &&
+                (this.architecture === 'arm64' || this.architecture === 'aarch64')) {
+                const javaArchivePathRenamed = `${javaArchivePath}.zip`;
+                yield fs_1.default.renameSync(javaArchivePath, javaArchivePathRenamed);
+                javaArchivePath = javaArchivePathRenamed;
+            }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
@@ -123967,7 +123973,18 @@ class MicrosoftDistributions extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            // Rename archive to add extension because after downloading
+            // archive does not contain extension type and it leads to some issues
+            // on Windows runners without PowerShell Core.
+            //
+            // For default PowerShell Windows it should contain extension type to unpack it.
+            if (process.platform === 'win32' &&
+                (this.architecture === 'arm64' || this.architecture === 'aarch64')) {
+                const javaArchivePathRenamed = `${javaArchivePath}.zip`;
+                yield fs_1.default.renameSync(javaArchivePath, javaArchivePathRenamed);
+                javaArchivePath = javaArchivePathRenamed;
+            }
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
@@ -124635,9 +124652,15 @@ class ZuluDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32' &&
+                (this.architecture === 'arm64' || this.architecture === 'aarch64')) {
+                const javaArchivePathRenamed = `${javaArchivePath}.zip`;
+                yield fs_1.default.renameSync(javaArchivePath, javaArchivePathRenamed);
+                javaArchivePath = javaArchivePathRenamed;
+            }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
