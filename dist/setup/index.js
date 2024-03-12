@@ -125372,7 +125372,7 @@ function run() {
             if (!versions.length) {
                 core.debug('java-version input is empty, looking for java-version-file input');
                 const content = fs_1.default.readFileSync(versionFile).toString().trim();
-                const version = (0, util_1.getVersionFromFileContent)(content, distributionName);
+                const version = (0, util_1.getVersionFromFileContent)(content, distributionName, versionFile);
                 core.debug(`Parsed version from file '${version}'`);
                 if (!version) {
                     throw new Error(`No supported version was found in file ${versionFile}`);
@@ -125726,9 +125726,19 @@ function isCacheFeatureAvailable() {
     return false;
 }
 exports.isCacheFeatureAvailable = isCacheFeatureAvailable;
-function getVersionFromFileContent(content, distributionName) {
+function getVersionFromFileContent(content, distributionName, versionFile) {
     var _a, _b, _c, _d, _e;
-    const javaVersionRegExp = /(?<version>(?<=(^|\s|-))(\d+\S*))(\s|$)/;
+    let javaVersionRegExp;
+    if (versionFile == '.tool-versions') {
+        javaVersionRegExp =
+            /^(java\s+)(?:\S*-)?v?(?<version>(\d+)(\.\d+)?(\.\d+)?(\+\d+)?(-ea(\.\d+)?)?)$/m;
+    }
+    else if (versionFile == '.java-version') {
+        javaVersionRegExp = /(?<version>(?<=(^|\s|-))(\d+\S*))(\s|$)/;
+    }
+    else {
+        throw new Error('Invalid version file');
+    }
     const fileContent = ((_b = (_a = content.match(javaVersionRegExp)) === null || _a === void 0 ? void 0 : _a.groups) === null || _b === void 0 ? void 0 : _b.version)
         ? (_d = (_c = content.match(javaVersionRegExp)) === null || _c === void 0 ? void 0 : _c.groups) === null || _d === void 0 ? void 0 : _d.version
         : '';
