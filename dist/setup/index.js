@@ -123961,7 +123961,7 @@ class CorrettoDistribution extends base_installer_1.JavaBase {
             const arch = this.distributionArchitecture();
             const imageType = this.packageType;
             if (core.isDebug()) {
-                console.time('Retrieving available versions for Coretto took'); // eslint-disable-line no-console
+                console.time('Retrieving available versions for Corretto took'); // eslint-disable-line no-console
             }
             const availableVersionsUrl = 'https://corretto.github.io/corretto-downloads/latest_links/indexmap_with_checksum.json';
             const fetchCurrentVersions = yield this.http.getJson(availableVersionsUrl);
@@ -123973,7 +123973,7 @@ class CorrettoDistribution extends base_installer_1.JavaBase {
             const availableVersions = this.getAvailableVersionsForPlatform(eligibleVersions);
             if (core.isDebug()) {
                 core.startGroup('Print information about available versions');
-                console.timeEnd('Retrieving available versions for Coretto took'); // eslint-disable-line no-console
+                console.timeEnd('Retrieving available versions for Corretto took'); // eslint-disable-line no-console
                 core.debug(`Available versions: [${availableVersions.length}]`);
                 core.debug(availableVersions
                     .map(item => `${item.version}: ${item.correttoVersion}`)
