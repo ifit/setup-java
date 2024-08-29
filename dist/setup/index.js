@@ -124939,8 +124939,9 @@ class SemeruDistribution extends base_installer_1.JavaBase {
     }
     findPackageForDownload(version) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!supportedArchitectures.includes(this.architecture)) {
-                throw new Error(`Unsupported architecture for IBM Semeru: ${this.architecture}, the following are supported: ${supportedArchitectures.join(', ')}`);
+            const arch = this.distributionArchitecture();
+            if (!supportedArchitectures.includes(arch)) {
+                throw new Error(`Unsupported architecture for IBM Semeru: ${this.architecture} for your current OS version, the following are supported: ${supportedArchitectures.join(', ')}`);
             }
             if (!this.stable) {
                 throw new Error('IBM Semeru does not provide builds for early access versions');
@@ -124974,7 +124975,7 @@ class SemeruDistribution extends base_installer_1.JavaBase {
                 const availableOptionsMessage = availableOptions
                     ? `\nAvailable versions: ${availableOptions}`
                     : '';
-                throw new Error(`Could not find satisfied version for SemVer '${version}'. ${availableOptionsMessage}`);
+                throw new Error(`Could not find satisfied version for SemVer version '${version}' for your current OS version for ${this.architecture} architecture ${availableOptionsMessage}`);
             }
             return resolvedFullVersion;
         });
@@ -124999,7 +125000,7 @@ class SemeruDistribution extends base_installer_1.JavaBase {
     getAvailableVersions() {
         return __awaiter(this, void 0, void 0, function* () {
             const platform = this.getPlatformOption();
-            const arch = this.architecture;
+            const arch = this.distributionArchitecture();
             const imageType = this.packageType;
             const versionRange = encodeURI('[1.0,100.0]'); // retrieve all available versions
             const releaseType = this.stable ? 'ga' : 'ea';
