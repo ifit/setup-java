@@ -124049,6 +124049,7 @@ const installer_7 = __nccwpck_require__(41121);
 const installer_8 = __nccwpck_require__(34750);
 const installer_9 = __nccwpck_require__(64298);
 const installer_10 = __nccwpck_require__(16132);
+const installer_11 = __nccwpck_require__(52869);
 var JavaDistribution;
 (function (JavaDistribution) {
     JavaDistribution["Adopt"] = "adopt";
@@ -124063,6 +124064,7 @@ var JavaDistribution;
     JavaDistribution["Corretto"] = "corretto";
     JavaDistribution["Oracle"] = "oracle";
     JavaDistribution["Dragonwell"] = "dragonwell";
+    JavaDistribution["SapMachine"] = "sapmachine";
 })(JavaDistribution || (JavaDistribution = {}));
 function getJavaDistribution(distributionName, installerOptions, jdkFile) {
     switch (distributionName) {
@@ -124089,6 +124091,8 @@ function getJavaDistribution(distributionName, installerOptions, jdkFile) {
             return new installer_9.OracleDistribution(installerOptions);
         case JavaDistribution.Dragonwell:
             return new installer_10.DragonwellDistribution(installerOptions);
+        case JavaDistribution.SapMachine:
+            return new installer_11.SapMachineDistribution(installerOptions);
         default:
             return null;
     }
@@ -124872,6 +124876,219 @@ class OracleDistribution extends base_installer_1.JavaBase {
     }
 }
 exports.OracleDistribution = OracleDistribution;
+
+
+/***/ }),
+
+/***/ 52869:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SapMachineDistribution = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const tc = __importStar(__nccwpck_require__(27784));
+const semver_1 = __importDefault(__nccwpck_require__(11383));
+const fs_1 = __importDefault(__nccwpck_require__(57147));
+const path_1 = __importDefault(__nccwpck_require__(71017));
+const util_1 = __nccwpck_require__(92629);
+const base_installer_1 = __nccwpck_require__(59741);
+class SapMachineDistribution extends base_installer_1.JavaBase {
+    constructor(installerOptions) {
+        super('SapMachine', installerOptions);
+    }
+    findPackageForDownload(version) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug(`Only stable versions: ${this.stable}`);
+            if (!['jdk', 'jre'].includes(this.packageType)) {
+                throw new Error('SapMachine provides only the `jdk` and `jre` package type');
+            }
+            const availableVersions = yield this.getAvailableVersions();
+            const matchedVersions = availableVersions
+                .filter(item => {
+                return (0, util_1.isVersionSatisfies)(version, item.version);
+            })
+                .map(item => {
+                return {
+                    version: item.version,
+                    url: item.downloadLink
+                };
+            });
+            if (!matchedVersions.length) {
+                throw new Error(`Couldn't find any satisfied version for the specified java-version: "${version}" and architecture: "${this.architecture}".`);
+            }
+            const resolvedVersion = matchedVersions[0];
+            return resolvedVersion;
+        });
+    }
+    getAvailableVersions() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const platform = this.getPlatformOption();
+            const arch = this.distributionArchitecture();
+            let fetchedReleasesJson = yield this.fetchReleasesFromUrl('https://sap.github.io/SapMachine/assets/data/sapmachine-releases-all.json');
+            if (!fetchedReleasesJson) {
+                fetchedReleasesJson = yield this.fetchReleasesFromUrl('https://api.github.com/repos/SAP/SapMachine/contents/assets/data/sapmachine-releases-all.json?ref=gh-pages', (0, util_1.getGitHubHttpHeaders)());
+            }
+            if (!fetchedReleasesJson) {
+                throw new Error(`Couldn't fetch SapMachine versions information from both primary and backup urls`);
+            }
+            core.debug('Successfully fetched information about available SapMachine versions');
+            const availableVersions = this.parseVersions(platform, arch, fetchedReleasesJson);
+            if (core.isDebug()) {
+                core.startGroup('Print information about available versions');
+                core.debug(availableVersions.map(item => item.version).join(', '));
+                core.endGroup();
+            }
+            return availableVersions;
+        });
+    }
+    downloadTool(javaRelease) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
+            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            core.info(`Extracting Java archive...`);
+            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, (0, util_1.getDownloadArchiveExtension)());
+            const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
+            const archivePath = path_1.default.join(extractedJavaPath, archiveName);
+            const version = this.getToolcacheVersionName(javaRelease.version);
+            const javaPath = yield tc.cacheDir(archivePath, this.toolcacheFolderName, version, this.architecture);
+            return { version: javaRelease.version, path: javaPath };
+        });
+    }
+    parseVersions(platform, arch, versions) {
+        const eligibleVersions = [];
+        for (const [, majorVersionMap] of Object.entries(versions)) {
+            for (const [, jdkVersionMap] of Object.entries(majorVersionMap.updates)) {
+                for (const [buildVersion, buildVersionMap] of Object.entries(jdkVersionMap)) {
+                    let buildVersionWithoutPrefix = buildVersion.replace('sapmachine-', '');
+                    if (!buildVersionWithoutPrefix.includes('.')) {
+                        // replace major version with major.minor.patch and keep the remaining build identifier after the + as is with regex
+                        buildVersionWithoutPrefix = buildVersionWithoutPrefix.replace(/(\d+)(\+.*)?/, '$1.0.0$2');
+                    }
+                    // replace + with . to convert to semver format if we have more than 3 version digits
+                    if (buildVersionWithoutPrefix.split('.').length > 3) {
+                        buildVersionWithoutPrefix = buildVersionWithoutPrefix.replace('+', '.');
+                    }
+                    buildVersionWithoutPrefix = (0, util_1.convertVersionToSemver)(buildVersionWithoutPrefix);
+                    // ignore invalid version
+                    if (!semver_1.default.valid(buildVersionWithoutPrefix)) {
+                        core.debug(`Invalid version: ${buildVersionWithoutPrefix}`);
+                        continue;
+                    }
+                    // skip earlyAccessVersions if stable version requested
+                    if (this.stable && buildVersionMap.ea === "true") {
+                        continue;
+                    }
+                    for (const [edition, editionAssets] of Object.entries(buildVersionMap.assets)) {
+                        if (this.packageType !== edition) {
+                            continue;
+                        }
+                        for (const [archAndPlatForm, archAssets] of Object.entries(editionAssets)) {
+                            let expectedArchAndPlatform = `${platform}-${arch}`;
+                            if (platform === 'linux-musl') {
+                                expectedArchAndPlatform = `linux-${arch}-musl`;
+                            }
+                            if (archAndPlatForm !== expectedArchAndPlatform) {
+                                continue;
+                            }
+                            for (const [contentType, contentTypeAssets] of Object.entries(archAssets)) {
+                                // skip if not tar.gz and zip files
+                                if (contentType !== 'tar.gz' && contentType !== 'zip') {
+                                    continue;
+                                }
+                                eligibleVersions.push({
+                                    os: platform,
+                                    architecture: arch,
+                                    version: buildVersionWithoutPrefix,
+                                    checksum: contentTypeAssets.checksum,
+                                    downloadLink: contentTypeAssets.url,
+                                    packageType: edition,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        const sortedVersions = this.sortParsedVersions(eligibleVersions);
+        return sortedVersions;
+    }
+    // Sorts versions in descending order as by default data in JSON isn't sorted
+    sortParsedVersions(eligibleVersions) {
+        const sortedVersions = eligibleVersions.sort((versionObj1, versionObj2) => {
+            const version1 = versionObj1.version;
+            const version2 = versionObj2.version;
+            return semver_1.default.compareBuild(version1, version2);
+        });
+        return sortedVersions.reverse();
+    }
+    getPlatformOption() {
+        switch (process.platform) {
+            case 'win32':
+                return 'windows';
+            case 'darwin':
+                return 'macos';
+            case 'linux':
+                // figure out if alpine/musl
+                if (fs_1.default.existsSync('/etc/alpine-release')) {
+                    return 'linux-musl';
+                }
+                return 'linux';
+            default:
+                return process.platform;
+        }
+    }
+    fetchReleasesFromUrl(url, headers = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                core.debug(`Trying to fetch available SapMachine versions info from the primary url: ${url}`);
+                const releases = (yield this.http.getJson(url, headers)).result;
+                return releases;
+            }
+            catch (err) {
+                core.debug(`Fetching SapMachine versions info from the link: ${url} ended up with the error: ${err.message}`);
+                return null;
+            }
+        });
+    }
+}
+exports.SapMachineDistribution = SapMachineDistribution;
 
 
 /***/ }),
