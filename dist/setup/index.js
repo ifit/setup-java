@@ -125012,7 +125012,7 @@ class SapMachineDistribution extends base_installer_1.JavaBase {
                         continue;
                     }
                     // skip earlyAccessVersions if stable version requested
-                    if (this.stable && buildVersionMap.ea === "true") {
+                    if (this.stable && buildVersionMap.ea === 'true') {
                         continue;
                     }
                     for (const [edition, editionAssets] of Object.entries(buildVersionMap.assets)) {
@@ -125038,7 +125038,7 @@ class SapMachineDistribution extends base_installer_1.JavaBase {
                                     version: buildVersionWithoutPrefix,
                                     checksum: contentTypeAssets.checksum,
                                     downloadLink: contentTypeAssets.url,
-                                    packageType: edition,
+                                    packageType: edition
                                 });
                             }
                         }
