@@ -124050,6 +124050,7 @@ const installer_8 = __nccwpck_require__(34750);
 const installer_9 = __nccwpck_require__(64298);
 const installer_10 = __nccwpck_require__(16132);
 const installer_11 = __nccwpck_require__(52869);
+const installer_12 = __nccwpck_require__(55644);
 var JavaDistribution;
 (function (JavaDistribution) {
     JavaDistribution["Adopt"] = "adopt";
@@ -124065,6 +124066,7 @@ var JavaDistribution;
     JavaDistribution["Oracle"] = "oracle";
     JavaDistribution["Dragonwell"] = "dragonwell";
     JavaDistribution["SapMachine"] = "sapmachine";
+    JavaDistribution["GraalVM"] = "graalvm";
 })(JavaDistribution || (JavaDistribution = {}));
 function getJavaDistribution(distributionName, installerOptions, jdkFile) {
     switch (distributionName) {
@@ -124093,6 +124095,8 @@ function getJavaDistribution(distributionName, installerOptions, jdkFile) {
             return new installer_10.DragonwellDistribution(installerOptions);
         case JavaDistribution.SapMachine:
             return new installer_11.SapMachineDistribution(installerOptions);
+        case JavaDistribution.GraalVM:
+            return new installer_12.GraalVMDistribution(installerOptions);
         default:
             return null;
     }
@@ -124308,6 +124312,172 @@ class DragonwellDistribution extends base_installer_1.JavaBase {
     }
 }
 exports.DragonwellDistribution = DragonwellDistribution;
+
+
+/***/ }),
+
+/***/ 55644:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.GraalVMDistribution = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const tc = __importStar(__nccwpck_require__(27784));
+const fs_1 = __importDefault(__nccwpck_require__(57147));
+const path_1 = __importDefault(__nccwpck_require__(71017));
+const base_installer_1 = __nccwpck_require__(59741);
+const util_1 = __nccwpck_require__(92629);
+const http_client_1 = __nccwpck_require__(96255);
+const GRAALVM_DL_BASE = 'https://download.oracle.com/graalvm';
+const IS_WINDOWS = process.platform === 'win32';
+const GRAALVM_PLATFORM = IS_WINDOWS ? 'windows' : process.platform;
+class GraalVMDistribution extends base_installer_1.JavaBase {
+    constructor(installerOptions) {
+        super('GraalVM', installerOptions);
+    }
+    downloadTool(javaRelease) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
+            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            core.info(`Extracting Java archive...`);
+            const extension = (0, util_1.getDownloadArchiveExtension)();
+            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
+            const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
+            const archivePath = path_1.default.join(extractedJavaPath, archiveName);
+            const version = this.getToolcacheVersionName(javaRelease.version);
+            const javaPath = yield tc.cacheDir(archivePath, this.toolcacheFolderName, version, this.architecture);
+            return { version: javaRelease.version, path: javaPath };
+        });
+    }
+    findPackageForDownload(range) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const arch = this.distributionArchitecture();
+            if (arch !== 'x64' && arch !== 'aarch64') {
+                throw new Error(`Unsupported architecture: ${this.architecture}`);
+            }
+            if (!this.stable) {
+                return this.findEABuildDownloadUrl(`${range}-ea`);
+            }
+            if (this.packageType !== 'jdk') {
+                throw new Error('GraalVM provides only the `jdk` package type');
+            }
+            const platform = this.getPlatform();
+            const extension = (0, util_1.getDownloadArchiveExtension)();
+            let major;
+            let fileUrl;
+            if (range.includes('.')) {
+                major = range.split('.')[0];
+                fileUrl = `${GRAALVM_DL_BASE}/${major}/archive/graalvm-jdk-${range}_${platform}-${arch}_bin.${extension}`;
+            }
+            else {
+                major = range;
+                fileUrl = `${GRAALVM_DL_BASE}/${range}/latest/graalvm-jdk-${range}_${platform}-${arch}_bin.${extension}`;
+            }
+            if (parseInt(major) < 17) {
+                throw new Error('GraalVM is only supported for JDK 17 and later');
+            }
+            const response = yield this.http.head(fileUrl);
+            if (response.message.statusCode === http_client_1.HttpCodes.NotFound) {
+                throw new Error(`Could not find GraalVM for SemVer ${range}`);
+            }
+            if (response.message.statusCode !== http_client_1.HttpCodes.OK) {
+                throw new Error(`Http request for GraalVM failed with status code: ${response.message.statusCode}`);
+            }
+            return { url: fileUrl, version: range };
+        });
+    }
+    findEABuildDownloadUrl(javaEaVersion) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const versions = yield this.fetchEAJson(javaEaVersion);
+            const latestVersion = versions.find(v => v.latest);
+            if (!latestVersion) {
+                throw new Error(`Unable to find latest version for '${javaEaVersion}'`);
+            }
+            const arch = this.distributionArchitecture();
+            const file = latestVersion.files.find(f => f.arch === arch && f.platform === GRAALVM_PLATFORM);
+            if (!file || !file.filename.startsWith('graalvm-jdk-')) {
+                throw new Error(`Unable to find file metadata for '${javaEaVersion}'`);
+            }
+            return {
+                url: `${latestVersion.download_base_url}${file.filename}`,
+                version: latestVersion.version
+            };
+        });
+    }
+    fetchEAJson(javaEaVersion) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const owner = 'graalvm';
+            const repository = 'oracle-graalvm-ea-builds';
+            const branch = 'main';
+            const filePath = `versions/${javaEaVersion}.json`;
+            const url = `https://api.github.com/repos/${owner}/${repository}/contents/${filePath}?ref=${branch}`;
+            const headers = (0, util_1.getGitHubHttpHeaders)();
+            core.debug(`Trying to fetch available version info for GraalVM EA builds from '${url}'`);
+            let fetchedJson;
+            try {
+                fetchedJson = (yield this.http.getJson(url, headers))
+                    .result;
+            }
+            catch (err) {
+                throw Error(`Fetching version info for GraalVM EA builds from '${url}' failed with the error: ${err.message}`);
+            }
+            if (fetchedJson === null) {
+                throw Error(`No GraalVM EA build found. Are you sure java-version: '${javaEaVersion}' is correct?`);
+            }
+            return fetchedJson;
+        });
+    }
+    getPlatform(platform = process.platform) {
+        switch (platform) {
+            case 'darwin':
+                return 'macos';
+            case 'win32':
+                return 'windows';
+            case 'linux':
+                return 'linux';
+            default:
+                throw new Error(`Platform '${platform}' is not supported. Supported platforms: 'linux', 'macos', 'windows'`);
+        }
+    }
+}
+exports.GraalVMDistribution = GraalVMDistribution;
 
 
 /***/ }),
