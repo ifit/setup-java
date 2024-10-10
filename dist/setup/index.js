@@ -123578,9 +123578,12 @@ class AdoptDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
@@ -123914,9 +123917,13 @@ class CorrettoDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
-            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, (0, util_1.getDownloadArchiveExtension)());
+            const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
+            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
             const version = this.getToolcacheVersionName(javaRelease.version);
@@ -124209,9 +124216,13 @@ class DragonwellDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
-            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, (0, util_1.getDownloadArchiveExtension)());
+            const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
+            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
             const version = this.getToolcacheVersionName(javaRelease.version);
@@ -124375,9 +124386,12 @@ class GraalVMDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
@@ -124543,11 +124557,8 @@ class LibericaDistributions extends base_installer_1.JavaBase {
             let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
-            if (process.platform === 'win32' &&
-                (this.architecture === 'arm64' || this.architecture === 'aarch64')) {
-                const javaArchivePathRenamed = `${javaArchivePath}.zip`;
-                yield fs_1.default.renameSync(javaArchivePath, javaArchivePathRenamed);
-                javaArchivePath = javaArchivePathRenamed;
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
             }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
@@ -124829,19 +124840,11 @@ class MicrosoftDistributions extends base_installer_1.JavaBase {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
             let javaArchivePath = yield tc.downloadTool(javaRelease.url);
-            // Rename archive to add extension because after downloading
-            // archive does not contain extension type and it leads to some issues
-            // on Windows runners without PowerShell Core.
-            //
-            // For default PowerShell Windows it should contain extension type to unpack it.
-            if (process.platform === 'win32' &&
-                (this.architecture === 'arm64' || this.architecture === 'aarch64')) {
-                const javaArchivePathRenamed = `${javaArchivePath}.zip`;
-                yield fs_1.default.renameSync(javaArchivePath, javaArchivePathRenamed);
-                javaArchivePath = javaArchivePathRenamed;
-            }
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
@@ -124978,9 +124981,12 @@ class OracleDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
@@ -125151,9 +125157,13 @@ class SapMachineDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
-            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, (0, util_1.getDownloadArchiveExtension)());
+            const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
+            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
             const version = this.getToolcacheVersionName(javaRelease.version);
@@ -125370,9 +125380,12 @@ class SemeruDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
@@ -125546,9 +125559,12 @@ class TemurinDistribution extends base_installer_1.JavaBase {
     downloadTool(javaRelease) {
         return __awaiter(this, void 0, void 0, function* () {
             core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
-            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
+            }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
             const archivePath = path_1.default.join(extractedJavaPath, archiveName);
@@ -125724,11 +125740,8 @@ class ZuluDistribution extends base_installer_1.JavaBase {
             let javaArchivePath = yield tc.downloadTool(javaRelease.url);
             core.info(`Extracting Java archive...`);
             const extension = (0, util_1.getDownloadArchiveExtension)();
-            if (process.platform === 'win32' &&
-                (this.architecture === 'arm64' || this.architecture === 'aarch64')) {
-                const javaArchivePathRenamed = `${javaArchivePath}.zip`;
-                yield fs_1.default.renameSync(javaArchivePath, javaArchivePathRenamed);
-                javaArchivePath = javaArchivePathRenamed;
+            if (process.platform === 'win32') {
+                javaArchivePath = (0, util_1.renameWinArchive)(javaArchivePath);
             }
             const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, extension);
             const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
@@ -126233,7 +126246,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getGitHubHttpHeaders = exports.convertVersionToSemver = exports.getVersionFromFileContent = exports.isCacheFeatureAvailable = exports.isGhes = exports.isJobStatusSuccess = exports.getToolcachePath = exports.isVersionSatisfies = exports.getDownloadArchiveExtension = exports.extractJdkFile = exports.getVersionFromToolcachePath = exports.getBooleanInput = exports.getTempDir = void 0;
+exports.renameWinArchive = exports.getGitHubHttpHeaders = exports.convertVersionToSemver = exports.getVersionFromFileContent = exports.isCacheFeatureAvailable = exports.isGhes = exports.isJobStatusSuccess = exports.getToolcachePath = exports.isVersionSatisfies = exports.getDownloadArchiveExtension = exports.extractJdkFile = exports.getVersionFromToolcachePath = exports.getBooleanInput = exports.getTempDir = void 0;
 const os_1 = __importDefault(__nccwpck_require__(22037));
 const path_1 = __importDefault(__nccwpck_require__(71017));
 const fs = __importStar(__nccwpck_require__(57147));
@@ -126393,6 +126406,17 @@ function getGitHubHttpHeaders() {
     return headers;
 }
 exports.getGitHubHttpHeaders = getGitHubHttpHeaders;
+// Rename archive to add extension because after downloading
+// archive does not contain extension type and it leads to some issues
+// on Windows runners without PowerShell Core.
+//
+// For default PowerShell Windows it should contain extension type to unpack it.
+function renameWinArchive(javaArchivePath) {
+    const javaArchivePathRenamed = `${javaArchivePath}.zip`;
+    fs.renameSync(javaArchivePath, javaArchivePathRenamed);
+    return javaArchivePathRenamed;
+}
+exports.renameWinArchive = renameWinArchive;
 
 
 /***/ }),
