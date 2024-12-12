@@ -124058,6 +124058,7 @@ const installer_9 = __nccwpck_require__(64298);
 const installer_10 = __nccwpck_require__(16132);
 const installer_11 = __nccwpck_require__(52869);
 const installer_12 = __nccwpck_require__(55644);
+const installer_13 = __nccwpck_require__(12634);
 var JavaDistribution;
 (function (JavaDistribution) {
     JavaDistribution["Adopt"] = "adopt";
@@ -124074,6 +124075,7 @@ var JavaDistribution;
     JavaDistribution["Dragonwell"] = "dragonwell";
     JavaDistribution["SapMachine"] = "sapmachine";
     JavaDistribution["GraalVM"] = "graalvm";
+    JavaDistribution["JetBrains"] = "jetbrains";
 })(JavaDistribution || (JavaDistribution = {}));
 function getJavaDistribution(distributionName, installerOptions, jdkFile) {
     switch (distributionName) {
@@ -124104,6 +124106,8 @@ function getJavaDistribution(distributionName, installerOptions, jdkFile) {
             return new installer_11.SapMachineDistribution(installerOptions);
         case JavaDistribution.GraalVM:
             return new installer_12.GraalVMDistribution(installerOptions);
+        case JavaDistribution.JetBrains:
+            return new installer_13.JetBrainsDistribution(installerOptions);
         default:
             return null;
     }
@@ -124492,6 +124496,231 @@ class GraalVMDistribution extends base_installer_1.JavaBase {
     }
 }
 exports.GraalVMDistribution = GraalVMDistribution;
+
+
+/***/ }),
+
+/***/ 12634:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.JetBrainsDistribution = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const tc = __importStar(__nccwpck_require__(27784));
+const fs_1 = __importDefault(__nccwpck_require__(57147));
+const path_1 = __importDefault(__nccwpck_require__(71017));
+const semver_1 = __importDefault(__nccwpck_require__(11383));
+const base_installer_1 = __nccwpck_require__(59741);
+const util_1 = __nccwpck_require__(92629);
+const http_client_1 = __nccwpck_require__(96255);
+class JetBrainsDistribution extends base_installer_1.JavaBase {
+    constructor(installerOptions) {
+        super('JetBrains', installerOptions);
+    }
+    findPackageForDownload(range) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const versionsRaw = yield this.getAvailableVersions();
+            const versions = versionsRaw.map(v => {
+                const formattedVersion = `${v.semver}+${v.build}`;
+                return {
+                    version: formattedVersion,
+                    url: v.url
+                };
+            });
+            const satisfiedVersions = versions
+                .filter(item => (0, util_1.isVersionSatisfies)(range, item.version))
+                .sort((a, b) => {
+                return -semver_1.default.compareBuild(a.version, b.version);
+            });
+            const resolvedFullVersion = satisfiedVersions.length > 0 ? satisfiedVersions[0] : null;
+            if (!resolvedFullVersion) {
+                const availableOptions = versionsRaw
+                    .map(item => `${item.tag_name} (${item.semver}+${item.build})`)
+                    .join(', ');
+                const availableOptionsMessage = availableOptions
+                    ? `\nAvailable versions: ${availableOptions}`
+                    : '';
+                throw new Error(`Could not find satisfied version for SemVer '${range}'. ${availableOptionsMessage}`);
+            }
+            return resolvedFullVersion;
+        });
+    }
+    downloadTool(javaRelease) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.info(`Downloading Java ${javaRelease.version} (${this.distribution}) from ${javaRelease.url} ...`);
+            const javaArchivePath = yield tc.downloadTool(javaRelease.url);
+            core.info(`Extracting Java archive...`);
+            const extractedJavaPath = yield (0, util_1.extractJdkFile)(javaArchivePath, 'tar.gz');
+            const archiveName = fs_1.default.readdirSync(extractedJavaPath)[0];
+            const archivePath = path_1.default.join(extractedJavaPath, archiveName);
+            const version = this.getToolcacheVersionName(javaRelease.version);
+            const javaPath = yield tc.cacheDir(archivePath, this.toolcacheFolderName, version, this.architecture);
+            return { version: javaRelease.version, path: javaPath };
+        });
+    }
+    getAvailableVersions() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const platform = this.getPlatformOption();
+            const arch = this.distributionArchitecture();
+            if (core.isDebug()) {
+                console.time('Retrieving available versions for JBR took'); // eslint-disable-line no-console
+            }
+            // need to iterate through all pages to retrieve the list of all versions
+            // GitHub API doesn't provide way to retrieve the count of pages to iterate so infinity loop
+            let page_index = 1;
+            const rawVersions = [];
+            const bearerToken = process.env.GITHUB_TOKEN;
+            while (true) {
+                const requestArguments = `per_page=100&page=${page_index}`;
+                const requestHeaders = {};
+                if (bearerToken) {
+                    requestHeaders['Authorization'] = `Bearer ${bearerToken}`;
+                }
+                const rawUrl = `https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases?${requestArguments}`;
+                if (core.isDebug() && page_index === 1) {
+                    // url is identical except page_index so print it once for debug
+                    core.debug(`Gathering available versions from '${rawUrl}'`);
+                }
+                const paginationPage = (yield this.http.getJson(rawUrl, requestHeaders)).result;
+                if (!paginationPage || paginationPage.length === 0) {
+                    // break infinity loop because we have reached end of pagination
+                    break;
+                }
+                rawVersions.push(...paginationPage);
+                page_index++;
+            }
+            // Add versions not available from the API but are downloadable
+            const hidden = ['11_0_10b1145.115', '11_0_11b1341.60'];
+            rawVersions.push(...hidden.map(tag => ({ tag_name: tag, name: tag })));
+            const versions0 = rawVersions.map((v) => __awaiter(this, void 0, void 0, function* () {
+                var _a;
+                // Release tags look like one of these:
+                // jbr-release-21.0.3b465.3
+                // jbr17-b87.7
+                // jb11_0_11-b87.7
+                // jbr11_0_15b2043.56
+                // 11_0_11b1536.2
+                // 11_0_11-b1522
+                const tag = v.tag_name;
+                // Extract version string
+                const vstring = tag
+                    .replace('jbr-release-', '')
+                    .replace('jbr', '')
+                    .replace('jb', '')
+                    .replace('-', '');
+                const vsplit = vstring.split('b');
+                let semver = vsplit[0];
+                const build = +vsplit[1];
+                // Normalize semver
+                if (!semver.includes('.') && !semver.includes('_'))
+                    semver = `${semver}.0.0`;
+                // Construct URL
+                let type;
+                switch ((_a = this.packageType) !== null && _a !== void 0 ? _a : '') {
+                    case 'jre':
+                        type = 'jbr';
+                        break;
+                    case 'jdk+jcef':
+                        type = 'jbrsdk_jcef';
+                        break;
+                    case 'jre+jcef':
+                        type = 'jbr_jcef';
+                        break;
+                    case 'jdk+ft':
+                        type = 'jbrsdk_ft';
+                        break;
+                    case 'jre+ft':
+                        type = 'jbr_ft';
+                        break;
+                    default:
+                        type = 'jbrsdk';
+                        break;
+                }
+                let url = `https://cache-redirector.jetbrains.com/intellij-jbr/${type}-${semver}-${platform}-${arch}-b${build}.tar.gz`;
+                let include = false;
+                const res = yield this.http.head(url);
+                if (res.message.statusCode === http_client_1.HttpCodes.OK) {
+                    include = true;
+                }
+                else {
+                    url = `https://cache-redirector.jetbrains.com/intellij-jbr/${type}_nomod-${semver}-${platform}-${arch}-b${build}.tar.gz`;
+                    const res2 = yield this.http.head(url);
+                    if (res2.message.statusCode === http_client_1.HttpCodes.OK) {
+                        include = true;
+                    }
+                }
+                const version = {
+                    tag_name: tag,
+                    semver: semver.replace(/_/g, '.'),
+                    build: build,
+                    url: url
+                };
+                return {
+                    item: version,
+                    include: include
+                };
+            }));
+            const versions = yield Promise.all(versions0).then(res => res.filter(item => item.include).map(item => item.item));
+            if (core.isDebug()) {
+                core.startGroup('Print information about available versions');
+                console.timeEnd('Retrieving available versions for JBR took'); // eslint-disable-line no-console
+                core.debug(`Available versions: [${versions.length}]`);
+                core.debug(versions.map(item => item.semver).join(', '));
+                core.endGroup();
+            }
+            return versions;
+        });
+    }
+    getPlatformOption() {
+        // Jetbrains has own platform names so need to map them
+        switch (process.platform) {
+            case 'darwin':
+                return 'osx';
+            case 'win32':
+                return 'windows';
+            default:
+                return process.platform;
+        }
+    }
+}
+exports.JetBrainsDistribution = JetBrainsDistribution;
 
 
 /***/ }),
