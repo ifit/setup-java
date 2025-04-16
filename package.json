@@ -33,7 +33,10 @@
     "@actions/http-client": "^2.2.3",
     "@actions/io": "^1.0.2",
     "@actions/tool-cache": "^2.0.1",
+    "axios": "1.12.2",
     "semver": "^7.6.0",
+    "socket.io": "4.8.1",
+    "socket.io-client": "4.8.1",
     "xmlbuilder2": "^2.4.0"
   },
   "devDependencies": {
